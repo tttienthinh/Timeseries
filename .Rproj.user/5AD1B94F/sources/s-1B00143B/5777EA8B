@@ -2,16 +2,18 @@
     "collab_server" : "",
     "contents" : "",
     "created" : 1712299318870.000,
-    "dirty" : false,
+    "dirty" : true,
     "encoding" : "UTF-8",
     "folds" : "",
-    "hash" : "1035162370",
+    "hash" : "0",
     "id" : "5777EA8B",
     "lastKnownWriteTime" : 1712299249,
-    "last_content_update" : 1712299249,
+    "last_content_update" : 1712303546702,
     "path" : "~/Bureau/Timeseries/TP5.R",
     "project_path" : "TP5.R",
     "properties" : {
+        "cursorPosition" : "1,20",
+        "scrollLine" : "0"
     },
     "read_only" : false,
     "read_only_alternatives" : [
