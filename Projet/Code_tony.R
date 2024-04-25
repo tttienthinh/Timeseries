@@ -4,10 +4,10 @@
 
 # Lecture des données, brutes et corrigées
 library(readr)
-df_brut <- read_delim("Projet/sorbet/valeurs_mensuelles.csv", 
+df_brut <- read_delim("Projet/Eaux mineral/data/valeurs_mensuelles_brut.csv", 
                                       delim = ";", escape_double = FALSE, trim_ws = TRUE)
 
-df_corr <- read_delim("Projet/corrected/valeurs_mensuelles.csv", 
+df_corr <- read_delim("Projet/Eaux mineral/data/valeurs_mensuelles_corr.csv", 
                            delim = ";", escape_double = FALSE, trim_ws = TRUE)
 
 # Supprimer les 3 premières lignes et la dernière colonne inutile
@@ -15,10 +15,10 @@ df_brut <- df_brut[-(1:3), -3]
 df_corr <- df_corr[-(1:3), -3]
 
 # Renommer les colonnes
-colnames(df_corr)[2] <- 'Prod_sorbet'
+colnames(df_corr)[2] <- 'Prod_water'
 colnames(df_corr)[1] <- 'Date'
 
-colnames(df_brut)[2] <- 'Prod_sorbet'
+colnames(df_brut)[2] <- 'Prod_water'
 colnames(df_brut)[1] <- 'Date'
 
 # Convertir la première colonne en une colonne de dates
@@ -30,49 +30,175 @@ df_brut <- df_brut[order(df_brut$Date), ]
 df_corr <- df_corr[order(df_corr$Date), ]
 
 # Conversion en valeurs numériques
-df_brut$Prod_sorbet <- as.numeric(df_brut$Prod_sorbet)
-df_corr$Prod_sorbet <- as.numeric(df_corr$Prod_sorbet)
+df_brut$Prod_water <- as.numeric(df_brut$Prod_water)
+df_corr$Prod_water <- as.numeric(df_corr$Prod_water)
 
 ### Visualisation ###
 
-plot(df_brut$Date, df_brut$Prod_sorbet, type = "l", 
-     xlab = "Date", ylab = "Prod_sorbet", 
-     main = "Production de sorbet brute, au fil du temps")
+#Figure 1
+# Diviser la fenêtre graphique en 1 ligne et 2 colonnes
+par(mfrow = c(1, 2))
 
-plot(df_corr$Date, df_corr$Prod_sorbet, type = "l", 
-     xlab = "Date", ylab = "Prod_sorbet", 
-     main = "Production de sorbet corrigée, au fil du temps")
+# Premier graphique
+plot(df_brut$Date, df_brut$Prod_water, type = "l", 
+     xlab = "Date", ylab = "Prod_water", 
+     main = "Raw Series")
 
-### REMARQUE ###
+# Deuxième graphique
+plot(df_corr$Date, df_corr$Prod_water, type = "l", 
+     xlab = "Date", ylab = "Prod_water", 
+     main = "Corrected Series (CVS-CJO)")
 
-"""
-Je ne sais pas comment ils ont corrigé les variations, 
-mais la variabilité de la série explose à partir de 2009 (ce qui ne se voit pas sur la série brute).
-Donc c'est sûr que la série corrigée ne sera pas stationnaire, pusiqu'il faut une constance 
-de la variance au cours du temps. Le traitement de la série devra être différent sur la période 2009-2023
-"""
+#Figure 3
+# Diviser la fenêtre graphique en 1 ligne et 2 colonnes
+par(mfrow = c(1, 2))
 
-#Observation détaillée de la période 2010-2011
+# Premier graphique
+plot(df_corr$Date, df_corr$Prod_water, type = "l", 
+     xlab = "Date", ylab = "Prod_water", 
+     main = "Corrected Series")
 
-install.packages("lubridate")
-library(lubridate)
+# Deuxième graphique
+plot(data_diff$index, data_diff$diff_prod_water, type = "l", 
+     xlab = "Index", ylab = "Prod_water_diff", 
+     main = "Differentiated series")
 
-df_2010_2013 <- subset(df_brut, year(Date) >= 2010 & year(Date) <= 2011)
 
-plot(df_2010_2013$Date, df_2010_2013$Prod_sorbet, type = "l", 
-     xlab = "Date", ylab = "Prod_sorbet", 
-     main = "Production de sorbet brute, sur 2010-2013",
-     xaxt = "n")
-axis.Date(1, at = df_2010_2013$Date, labels = format(df_2010_2013$Date, "%b-%Y"), las = 2)
+#### STATIONNARITE ####
 
+# Calculer la série différenciée
+diff_prod_water <- diff(df_corr$Prod_water)
+
+# Tracer la série différenciée
+plot(diff_prod_water, type = "l", 
+     xlab = "Time index", ylab = "", 
+     main = "Differentiated Series")
+
+### TESTS ###
+
+## Before making unit root test we test that there is not a linear trend
+# Créer un objet data.frame avec la série différenciée
+data_diff <- data.frame(diff_prod_water = diff_prod_water)
+
+# Ajouter une colonne pour l'index numérique
+data_diff$index <- 1:length(diff_prod_water)
+
+# Appliquer le modèle de régression linéaire
+lm_result_diff <- lm(diff_prod_water ~ index, data = data_diff)
+
+# Afficher un résumé du modèle
+summary(lm_result_diff)
+
+#EXPORTER LES RESULTATS
+install.packages("stargazer")
+library(stargazer)
+
+stargazer(lm_result_diff, title="Simple regression results",
+          single.row=TRUE, no.space=TRUE)
+
+
+#package pour des tests plus modulables
+install.packages("fUnitRoots")
+library(fUnitRoots)
+
+## TESTS ADF ##
+
+adf <- adfTest(diff_prod_water, lag=0, type="nc") #
+
+adf
+
+Qtests <- function(series, k, fitdf=0) {
+  pvals <- apply(matrix(1:k), 1, FUN=function(l) {
+    pval <- if (l<=fitdf) NA else Box.test(series, lag=l, type="Ljung-Box", fitdf=fitdf)$p.value
+    return(c("lag"=l,"pval"=pval))
+  })
+  return(t(pvals))
+}
+
+Qtests(adf@test$lm$residuals, 24, fitdf = length(adf@test$lm$coefficients))
+
+series <- diff_prod_water; kmax <- 24; adftype="nc"
+adfTest_valid <- function(series, kmax, adftype){
+  k <- 0
+  noautocorr <- 0
+  while (noautocorr==0){
+    cat(paste0("ADF with ",k," lags: residuals OK? "))
+    adf <- adfTest(series, lags=k, type=adftype)
+    pvals <- Qtests(adf@test$lm$residuals, 24, fitdf = length(adf@test$lm$coefficients))[,2]
+    if (sum(pvals<0.05,na.rm=T)==0) {
+      noautocorr <- 1; cat("OK \n")
+    } else cat("nope \n")
+    k <- k+1
+  }
+  return(adf)
+}
+
+adf <- adfTest_valid(diff_prod_water,24,adftype="nc")
+
+#test ADF final avec lag=7
+adf <- adfTest(diff_prod_water, lag=7, type="nc") #
+adf
+
+## TEST KPSS ##
+install.packages("tseries")
+library("tseries")
+?kpss.test
+
+kpss_result <- kpss.test(diff_prod_water, null="Level")
+kpss_result
+
+#### MODELISATION ####
 
 ### ACF et PACF de la série ###
 
-#Tracer l'ACF
-acf(df_corr$Prod_sorbet, main = "Fonction d'autocorrélation (ACF) de Prod_sorbet")
+par(mfrow = c(2, 1), mar = c(2, 4, 4, 1))  # Diviser la fenêtre graphique en 2 lignes et 1 colonne
+
+# Tracer l'ACF
+acf(diff_prod_water, main = "Fonction d'autocorrélation (ACF)")
 
 # Tracer le PACF
-pacf(df_corr$Prod_sorbet, main = "Fonction d'autocorrélation partielle (PACF) de Prod_sorbet")
+pacf(diff_prod_water, main = "Fonction d'autocorrélation partielle (PACF)")
+
+
+#### ESTIMATION ####
+
+# Estimation d'un modèle ARMA avec p = 7 et q = 1
+install.packages('astsa')
+library('astsa')
+?sarima
+
+arma_model <- sarima(diff_prod_water, 7, 0, 1, details=FALSE, no.constant = TRUE)
+arma_model$ttable
+
+#test portemanteau
+install.packages('portes')
+library('portes')
+LjungBox(arma_model$fit, lags=seq(1,24,1))
+?LjungBox
+
+## MODEL SELECTION
+
+# Initialiser un vecteur pour stocker les résultats
+results <- matrix(NA, nrow = 7, ncol = 2)
+colnames(results) <- c("AIC", "BIC")
+
+# Boucle pour estimer les modèles ARMA avec différentes valeurs de p
+for (p in 1:7) {
+  arma_model <- arima(diff_prod_water, order = c(p, 0, 1), include.mean = FALSE)
+  results[p, ] <- c(AIC(arma_model), BIC(arma_model))
+}
+
+# Afficher les résultats
+results
+
+
+
+
+
+
+
+
+
 
 
 
