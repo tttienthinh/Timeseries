@@ -1,0 +1,217 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+% Set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  pdftitle={Linear Time Series Assignment},
+  pdfauthor={Tony LAUZE; Tien-Thinh TRAN-THUONG},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\title{Linear Time Series Assignment}
+\usepackage{etoolbox}
+\makeatletter
+\providecommand{\subtitle}[1]{% add subtitle to \maketitle
+  \apptocmd{\@title}{\par {\large #1 \par}}{}{}
+}
+\makeatother
+\subtitle{ARIMA modelling of a time series}
+\author{Tony LAUZE \and Tien-Thinh TRAN-THUONG}
+\date{2024-04}
+
+\begin{document}
+\maketitle
+
+\hypertarget{part-i-the-data}{%
+\section{Part I : the data}\label{part-i-the-data}}
+
+\hypertarget{what-does-the-chosen-series-represent}{%
+\subsection{1 - What does the chosen series represent
+?}\label{what-does-the-chosen-series-represent}}
+
+For this project, we chose to work on the time series of the mineral and
+other bottled waters production. The series is a French Industrial
+Production Index (IPI) series, taken from the INSEE's time series
+databank. More precisely, we will work on the series that is corrected
+from seasonal variations and working days (CVS-CJO), covering the
+1990/01-2024/01 period with a monthly frequency, resulting in 410
+observations. The index is with base 100 in 2021. Both the raw and the
+corrected series can be observed below (see \textbf{Figure 1}).
+
+\begin{figure}
+\centering
+\includegraphics{Analyse_bis_files/figure-latex/unnamed-chunk-2-1.pdf}
+\caption{Figure 1: Comparison of Raw and Corrected Series}
+\end{figure}
+
+On the raw series, a clear seasonality can be seen, as well as a slight
+trend. On the corrected series, the seasonality seems to be gone (which
+is all the point of the CVS-CJO), and an increasing trend can be
+observed, which might be linear, from around 1995 to 2017. Apart from a
+peak in the summer of 2003, which may be attributed to the notorious
+heatwave that took place in France at that time, no outliers or
+particular periods can be found in the series.
+
+\hypertarget{transform-the-series-to-make-it-stationary-if-necessary.}{%
+\subsection{2 - Transform the series to make it stationary if
+necessary.}\label{transform-the-series-to-make-it-stationary-if-necessary.}}
+
+Given no seasonality seems to arise, and no change in the variability is
+noticeable through time, we only need to deal with the trend. A
+possibility would be to estimate the trend that occurs from around 1995
+to 2017 (by supposing it is linear) and then to remove it from the
+series. However, this trend does not seem to continue after 2017, and
+before 1995 the series is rather decreasing. Therefore, we will instead
+try to differentiate the series, that is, to apply the operator
+\(\Delta U_t = U_t - U_{t-1}\). The result can be seen in \textbf{Figure
+2}.
+
+\includegraphics{Analyse_bis_files/figure-latex/unnamed-chunk-4-1.pdf}
+The one-time differentiated series seems to be centered around zero, no
+clear change in variability can be seen: this series looks stationary.
+To check if it is, we will proceed to some tests.
+
+First, we can check whether a unit root is present in our series, using
+the augmented Dickey-Fuller (ADF) test. Regarding the specification of
+the test, the series being centered around zero and presenting no trend,
+we use the regression with no intercept (constant) nor time trend. To
+check the hypothesis of absence of trend, we can make a simple
+regression of the series on time index (see the regression table in
+\textbf{Table 1}): both the intercept and coefficient of the time index
+are almost equal to zero and are definitely non significant. We can thus
+be confident about the specification of the ADF test. Regarding the
+number of lags, 7 are required so that the Ljung-Box test cannot reject
+the null-hypothesis of absence of auto-correlation among the residuals
+of the model until order 24. The results of the performed ADF test is
+presented in \textbf{Table 2}, and it leads to reject the null
+hypothesis of the presence of a unit root; which is in favor of
+stationary.
+
+\begin{table}
+  \centering
+  \caption{Regression of the series on time}
+  \label{}
+  \begin{tabular}{lc}
+    \hline
+    \hline
+    & \textit{Dependent variable:} \\
+    \cline{2-2}
+    & diff_prod_water \\
+    \hline
+    index & 0.0004 (0.003) \\
+    Constant & $-$0.017 (0.641) \\
+    \hline
+    Observations & 409 \\
+    $R^{2}$ & 0.00004 \\
+    \hline
+    \hline
+    \textit{Note:} & $^{*}p$
+  \end{tabular}
+\end{table}
+
+``` Then, we can perform a KPSS test in which the null hypothesis is the
+level-stationarity of the series. The p-value being greater than 0.1
+(see \textbf{Table 3}), we cannot reject the null-hypothesis; which is
+once again in favor of stationarity.
+
+\hypertarget{graphically-represent-the-chosen-series-before-and-after-transforming-it.}{%
+\subsection{3 - Graphically represent the chosen series before and after
+transforming
+it.}\label{graphically-represent-the-chosen-series-before-and-after-transforming-it.}}
+
+\hypertarget{part-ii-arma-models}{%
+\section{Part II : ARMA models}\label{part-ii-arma-models}}
+
+\hypertarget{pick-and-justify-your-choice-an-armapq-model-for-your-corrected-time-series-xt.-estimate-the-model-parameters-and-check-its-validity}{%
+\subsection{4 - Pick (and justify your choice) an ARMA(p,q) model for
+your corrected time series Xt. Estimate the model parameters and check
+its
+validity}\label{pick-and-justify-your-choice-an-armapq-model-for-your-corrected-time-series-xt.-estimate-the-model-parameters-and-check-its-validity}}
+
+\hypertarget{write-the-arimapdq-model-for-the-chosen-series.}{%
+\subsection{5 - Write the ARIMA(p,d,q) model for the chosen
+series.}\label{write-the-arimapdq-model-for-the-chosen-series.}}
+
+\hypertarget{part-iii-prediction}{%
+\section{Part III : Prediction}\label{part-iii-prediction}}
+
+\hypertarget{write-the-equation-verified-by-the-confidence-region-of-level-alpha-on-the-future-values-xt1xt2.}{%
+\subsection{\texorpdfstring{6 - Write the equation verified by the
+confidence region of level \(\alpha\) on the future values
+(XT+1,XT+2).}{6 - Write the equation verified by the confidence region of level \textbackslash alpha on the future values (XT+1,XT+2).}}\label{write-the-equation-verified-by-the-confidence-region-of-level-alpha-on-the-future-values-xt1xt2.}}
+
+\hypertarget{give-the-hypotheses-used-to-get-this-region.}{%
+\subsection{7 - Give the hypotheses used to get this
+region.}\label{give-the-hypotheses-used-to-get-this-region.}}
+
+\hypertarget{graphically-represent-this-region-for-alpha-95.-comment-on-it.}{%
+\subsection{\texorpdfstring{8 - Graphically represent this region for
+\(\alpha\) = 95\%. Comment on
+it.}{8 - Graphically represent this region for \textbackslash alpha = 95\%. Comment on it.}}\label{graphically-represent-this-region-for-alpha-95.-comment-on-it.}}
+
+\hypertarget{open-question-let-yt-a-stationary-time-series-available-from-t-1-to-t.-we-assume-that-yt1-is-available-faster-than-xt1.-under-which-conditions-does-this-information-allow-you-to-improve-the-prediction-of-xt1-how-would-you-test-itthem}{%
+\subsection{9 - Open question : let Yt a stationary time series
+available from t = 1 to T. We assume that YT+1 is available faster than
+XT+1. Under which condition(s) does this information allow you to
+improve the prediction of XT+1 ? How would you test it/them
+?}\label{open-question-let-yt-a-stationary-time-series-available-from-t-1-to-t.-we-assume-that-yt1-is-available-faster-than-xt1.-under-which-conditions-does-this-information-allow-you-to-improve-the-prediction-of-xt1-how-would-you-test-itthem}}
+
+\end{document}

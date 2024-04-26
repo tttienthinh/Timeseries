@@ -1,0 +1,141 @@
+---
+title: "Linear Time Series Assignment"
+author:
+- Tony LAUZE
+- Tien-Thinh TRAN-THUONG
+date: "2024-04"
+output: pdf_document
+subtitle: ARIMA modelling of a time series
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+```{r}
+# Importation
+library(readr)
+library(lubridate)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+
+df_brut <- read_delim("Eaux mineral/data/valeurs_mensuelles_brut.csv", 
+                                      delim = ";", escape_double = FALSE, trim_ws = TRUE, show_col_types = FALSE)
+
+df_corr <- read_delim("Eaux mineral/data/valeurs_mensuelles_corr.csv", 
+                           delim = ";", escape_double = FALSE, trim_ws = TRUE, show_col_types = FALSE)
+
+# Supprimer les 3 premières lignes et la dernière colonne inutile
+df_brut <- df_brut[-(1:3), -3]
+df_corr <- df_corr[-(1:3), -3]
+
+# Renommer les colonnes
+colnames(df_corr)[2] <- 'Prod_water'
+colnames(df_corr)[1] <- 'Date'
+
+colnames(df_brut)[2] <- 'Prod_water'
+colnames(df_brut)[1] <- 'Date'
+
+# Convertir la première colonne en une colonne de dates
+df_brut$Date <- as.Date(paste(df_brut$Date, "-01", sep=""), format="%Y-%m-%d")
+df_corr$Date <- as.Date(paste(df_corr$Date, "-01", sep=""), format="%Y-%m-%d")
+
+# Mettre dans l'ordre les valeurs
+df_brut <- df_brut[order(df_brut$Date), ]
+df_corr <- df_corr[order(df_corr$Date), ]
+
+# Conversion en valeurs numériques
+df_brut$Prod_water <- as.numeric(df_brut$Prod_water)
+df_corr$Prod_water <- as.numeric(df_corr$Prod_water)
+
+```
+
+# Part I : the data
+
+## 1 - What does the chosen series represent ?
+
+For this project, we chose to work on the time series of the mineral and other bottled waters production. The series is a French Industrial Production Index (IPI) series, taken from the INSEE’s time series databank. More precisely, we will work on the series that is corrected from seasonal variations and working days (CVS-CJO), covering the 1990/01-2024/01 period with a monthly frequency, resulting in 410 observations. The index is with base 100 in 2021. Both the raw and the corrected series can be observed below (see **Figure 1**).
+
+```{r, fig.width=10, fig.height=5, fig.cap="Figure 1: Comparison of Raw and Corrected Series"}
+par(mfrow = c(1, 2))
+
+# Premier graphique
+plot(df_brut$Date, df_brut$Prod_water, type = "l", 
+     xlab = "Date", ylab = "Prod_water", 
+     main = "Raw Series")
+
+# Deuxième graphique
+plot(df_corr$Date, df_corr$Prod_water, type = "l", 
+     xlab = "Date", ylab = "Prod_water", 
+     main = "Corrected Series (CVS-CJO)")
+
+```
+
+On the raw series, a clear seasonality can be seen, as well as a slight trend. On the corrected series, the seasonality seems to be gone (which is all the point of the CVS-CJO), and an increasing trend can be observed, which might be linear, from around 1995 to 2017. Apart from a peak in the summer of 2003, which may be attributed to the notorious heatwave that took place in France at that time, no outliers or particular periods can be found in the series.
+
+## 2 - Transform the series to make it stationary if necessary.
+
+Given no seasonality seems to arise, and no change in the variability is noticeable through time, we only need to deal with the trend. A possibility would be to estimate the trend that occurs from around 1995 to 2017 (by supposing it is linear) and then to remove it from the series. However, this trend does not seem to continue after 2017, and before 1995 the series is rather decreasing. Therefore, we will instead try to differentiate the series, that is, to apply the operator $\Delta U_t = U_t - U_{t-1}$. The result can be seen in **Figure 2**.
+
+```{r, include=FALSE}
+# Calculer la série différenciée
+diff_prod_water <- diff(df_corr$Prod_water) %>% ts()
+diff_prod_water
+```
+
+
+```{r, fig.width=10, fig.height=5, fig.cap="Figure 2: Observation of the differentiated series"}
+# Tracer la série différenciée
+plot(diff_prod_water, type = "l", 
+     xlab = "Time index", ylab = "", 
+     main = "Differentiated Series")
+```
+The one-time differentiated series seems to be centered around zero, no clear change in variability can be seen: this series looks stationary. To check if it is, we will proceed to some tests.
+
+First, we can check whether a unit root is present in our series, using the augmented Dickey-Fuller (ADF) test. Regarding the specification of the test, the series being centered around zero and presenting no trend, we use the regression with no intercept (constant) nor time trend. To check the hypothesis of absence of trend, we can make a simple regression of the series on time index (see the regression table in \textbf{Table 1}): both the intercept and coefficient of the time index are almost equal to zero and are definitely non significant. We can thus be confident about the specification of the ADF test. Regarding the number of lags, 7 are required so that the Ljung-Box test cannot reject the null-hypothesis of absence of auto-correlation among the residuals of the model until order 24. The results of the performed ADF test is presented in \textbf{Table 2}, and it leads to reject the null hypothesis of the presence of a unit root; which is in favor of stationary.
+
+```{r, results='asis'}
+cat("\\begin{table}
+  \\centering
+  \\caption{Regression of the series on time}
+  \\label{}
+  \\begin{tabular}{lc}
+    \\hline
+    \\hline
+    & \\textit{Dependent variable:} \\\\
+    \\cline{2-2}
+    & diff_prod_water \\\\
+    \\hline
+    index & 0.0004 (0.003) \\\\
+    Constant & $-$0.017 (0.641) \\\\
+    \\hline
+    Observations & 409 \\\\
+    $R^{2}$ & 0.00004 \\\\
+    \\hline
+    \\hline
+    \\textit{Note:} & $^{*}p$
+  \\end{tabular}
+\\end{table}")
+```
+```
+Then, we can perform a KPSS test in which the null hypothesis is the level-stationarity of the series. The p-value being greater than 0.1 (see \textbf{Table 3}), we cannot reject the null-hypothesis; which is once again in favor of stationarity.
+
+## 3 - Graphically represent the chosen series before and after transforming it.
+
+# Part II : ARMA models
+
+## 4 - Pick (and justify your choice) an ARMA(p,q) model for your corrected time series Xt. Estimate the model parameters and check its validity
+
+## 5 - Write the ARIMA(p,d,q) model for the chosen series.
+
+# Part III : Prediction
+
+## 6 - Write the equation verified by the confidence region of level $\alpha$ on the future values (XT+1,XT+2).
+
+## 7 - Give the hypotheses used to get this region.
+
+## 8 - Graphically represent this region for $\alpha$ = 95%. Comment on it.
+
+## 9 - Open question : let Yt a stationary time series available from t = 1 to T. We assume that YT+1 is available faster than XT+1. Under which condition(s) does this information allow you to improve the prediction of XT+1 ? How would you test it/them ?

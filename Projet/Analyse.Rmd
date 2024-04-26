@@ -2,8 +2,8 @@
 title: "Linear Time Series Assignment"
 author:
 - Tony LAUZE
-- "Tien-Thinh TRAN-THUONG"
-date: "2024-05-20"
+- Tien-Thinh TRAN-THUONG
+date: "2024-04"
 output: pdf_document
 subtitle: ARIMA modelling of a time series
 ---
