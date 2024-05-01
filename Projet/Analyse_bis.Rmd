@@ -96,7 +96,7 @@ The one-time differentiated series seems to be centered around zero, no clear ch
 
 First, we can check whether a unit root is present in our series, using the augmented Dickey-Fuller (ADF) test. Regarding the specification of the test, the series being centered around zero and presenting no trend, we use the regression with no intercept (constant) nor time trend. To check the hypothesis of absence of trend, we can make a simple regression of the series on time index (see the regression table in \textbf{Table 1}): both the intercept and coefficient of the time index are almost equal to zero and are definitely non significant. We can thus be confident about the specification of the ADF test. Regarding the number of lags, 7 are required so that the Ljung-Box test cannot reject the null-hypothesis of absence of auto-correlation among the residuals of the model until order 24. The results of the performed ADF test is presented in \textbf{Table 2}, and it leads to reject the null hypothesis of the presence of a unit root; which is in favor of stationary.
 
-```{r, results='asis'}
+```{r, eval=FALSE, results='asis'}
 cat("\\begin{table}
   \\centering
   \\caption{Regression of the series on time}
