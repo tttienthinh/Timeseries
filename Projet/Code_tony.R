@@ -5,10 +5,10 @@
 # Lecture des données, brutes et corrigées
 library(readr)
 df_brut <- read_delim("Projet/Eaux mineral/data/valeurs_mensuelles_brut.csv", 
-                                      delim = ";", escape_double = FALSE, trim_ws = TRUE)
+                      delim = ";", escape_double = FALSE, trim_ws = TRUE)
 
 df_corr <- read_delim("Projet/Eaux mineral/data/valeurs_mensuelles_corr.csv", 
-                           delim = ";", escape_double = FALSE, trim_ws = TRUE)
+                      delim = ";", escape_double = FALSE, trim_ws = TRUE)
 
 # Supprimer les 3 premières lignes et la dernière colonne inutile
 df_brut <- df_brut[-(1:3), -3]
