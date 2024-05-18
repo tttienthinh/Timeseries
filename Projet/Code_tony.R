@@ -303,7 +303,6 @@ element22 <- variance_residus * (1 + (phi1 + theta1)^2)
 # Créer la matrice
 Sigma <- matrix(c(element11, element12, element21, element22), nrow=2, ncol=2, byrow=TRUE)
 print(Sigma)
-library(ellipse)
 
 # Prédire les valeurs à T+1 et T+2 avec la série différenciée
 forecast_values <- predict(model, n.ahead=2)
