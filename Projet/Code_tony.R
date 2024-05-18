@@ -250,6 +250,7 @@ element22 <- variance_residus * (1 + (phi1 - theta1)^2)
 # Créer la matrice
 Sigma <- matrix(c(element11, element12, element21, element22), nrow=2, ncol=2, byrow=TRUE)
 print(Sigma)
+install.packages("ellipse")
 library(ellipse)
 
 # Prédire les valeurs à T+1 et T+2 pour la série initiale ARIMA(7,1,1)
@@ -318,3 +319,4 @@ plot(ellipse(Sigma, centre=c(prediction_T1, prediction_T2), level=0.95),
 
 points(x=prediction_T1, y=prediction_T2, col="red", pch=19)
 legend("topright", legend="Prediction", pch=19, col="red", cex=0.8)
+
